@@ -2,6 +2,8 @@
 -- Project 3: the Quilt language
 
 module Quilt where
+import Parsing2
+import Data.Bool (bool)
 
 -- | A color is a list of red, green, and blue values between 0.0 - 1.0.
 --   For example, [0,0,0] is black, [1,1,1] is white, [0.5, 0, 0.5] is a
@@ -19,29 +21,50 @@ evalQuilt :: String -> Either String QuiltFun
 evalQuilt s = Right $ \x y -> [0,0,1]
 
 {-# LANGUAGE GADTSyntax #-}
-<colorlit> ::= 'red' | 'orange' | 'yellow' | ...
-<num>      ::= integer or floating-point
-<coord>    ::= 'x' | 'y'
-<bool>     ::= 'False' | 'True'
+-- General Grammar Guide for Quilts
 
-<qexp> ::=
-  | <colorlit> ::= <color>
-  | <num> ::= <number>
-  | <coord> ::= <number>
-  | <bool> ::= <boolean>
-  | '[' <qexp> ',' <qexp> ',' <qexp> ']'
-  | 'if' <qexp> 'then' <qexp> 'else' <qexp> ::= <boolean>  <qexp> <qexp>
-  | <uop> <qexp> ::= <boolean> | <boolean>
-  | <qexp> <bop> <qexp> ::= <number> <number> ::= <boolean>
-  | 'quilt' <qexp> <qexp> <qexp> <qexp> ::= <qexp> <qexp> <qexp> <qexp>
+-- <colorlit> ::= 'red' | 'orange' | 'yellow' | ...
+-- <num>      ::= integer or floating-point
+-- <coord>    ::= 'x' | 'y'
+-- <bool>     ::= 'False' | 'True'
 
-<uop>        ::= '-' | '!'
-<bop>        ::= <arith> | <comparison> | <boolean>
-<arith>      ::= '+' | '-' | '*' | '/'
-<comparison> ::= '<' | '>' | ...
-<boolean>    ::= '&&' | '||' 
+-- <qexp> ::=
+--   | <colorlit>
+--   | <num>
+--   | <coord>
+--   | <bool>
+--   | '[' <qexp> ',' <qexp> ',' <qexp> ']'
+--   | 'if' <qexp> 'then' <qexp> 'else' <qexp>
+--   | <uop> <qexp>
+--   | <qexp> <bop> <qexp>
+--   | 'quilt' <qexp> <qexp> <qexp> <qexp>
+
+-- <uop>        ::= '-' | '!'
+-- <bop>        ::= <arith> | <comparison> | <boolean>
+-- <arith>      ::= '+' | '-' | '*' | '/'
+-- <comparison> ::= '<' | '>' | ...
+-- <boolean>    ::= '&&' | '||'
 
 data Quilt where
-    boolean :: Bool -> Quilt
-    number  :: Double -> Quilt
-    color   :: [number, number, number] -> Quilt
+    Boolean :: Bool -> Quilt
+    Number  :: Double -> Quilt
+    Color   :: Double -> Double -> Double -> Quilt
+
+parseQuiltAtom :: Parser Quilt
+parseQuiltAtom = 
+  -- impliment <colorlit>?
+  Number <$> double
+  -- impliment <coords>?
+  <|> Boolean <$> bool
+  <|> If <$> (reserved "if" *> parseArith) <*> (reserved "then" *> parseArith) <*> (reserved "else" *> parseArith)
+
+
+lexer :: TokenParser 
+lexer = makeTokenParser $ emptyDef
+   { reservedNames = ["let", "in", "False", "True", "if", "then", "else"] }
+
+reserved :: String -> Parser ()
+reserved   = getReserved lexer
+
+double :: Parser Double
+double    = getDouble lexer
